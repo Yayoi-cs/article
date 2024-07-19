@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE instance-profile
+        SYSTEM "https://resources.jetbrains.com/writerside/1.0/product-profile.dtd">
+
+<instance-profile id="p"
+                 name="portfolio"
+                 start-page="OverView.md">
+
+    <toc-element topic="OverView.md"/>
+    <toc-element topic="CTF.md">
+        <toc-element topic="TryHackMe.md"/>
+    </toc-element>
+    <toc-element topic="Blog.md">
+        <toc-element topic="no-emacs.md"/>
+        <toc-element topic="CppVectorSpecification.md"/>
+        <toc-element topic="FirstArticle.md"/>
+    </toc-element>
+</instance-profile>

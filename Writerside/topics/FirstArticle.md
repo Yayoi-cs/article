@@ -1,0 +1,13 @@
+# FirstArticle
+
+初めてのブログになります.
+
+このポートフォリオ,ブログはJetBrains製WriterSideでMarkDownのみで書かれています.
+
+[JetBrains,WriteSide](https://www.jetbrains.com/writerside/)
+
+APIリファレンス,ユーザーガイド,SDKドキュメントなどをMarkDownで書けるWriteSideのMDを静的なHTMLとしてエクスポート出来る点は静的なページを無料で公開することの出来るGithub Pagesとマッチしており個人的に満足しています.
+
+動的なページの魅力は大きいですがSaasとの契約,維持管理の面など面倒くさがりな私には少し荷が重く感じます(苦笑い).
+
+これからも自分の防備録としての一面が強いですが学んだこと,技術的な知見などをシェアできるようにブログの更新を頑張ります.
